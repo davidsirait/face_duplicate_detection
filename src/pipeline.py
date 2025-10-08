@@ -9,9 +9,9 @@ import logging
 
 from config import Config
 from preprocessing import ImagePreprocessor
-from detector import MTCNNDetector, YuNetDetector
+from detector import FaceDetector
 from embedding import FaceNetEmbedding
-from vector_db import FaceVectorDB
+from db import FaceVectorDB
 
 logger = logging.getLogger(__name__)
 
@@ -32,27 +32,27 @@ class FaceProcessingPipeline:
         self.preprocessor = ImagePreprocessor()
         
         # Face detector
-        if config.DETECTOR_TYPE == "mtcnn":
-            self.detector = MTCNNDetector(device=config.DEVICE)
+        if config.get("face_detection.detector_type") == "mtcnn":
+            self.detector = FaceDetector(device=config.get("device.type"))
         else:
-            self.detector = YuNetDetector(
-                model_path=config.YUNET_MODEL_PATH,
-                device=config.DEVICE
+            self.detector = FaceDetector(
+                model_path=config.get("paths.yunet_model_path"),
+                device=config.get("device.type")
             )
         
         # Embedding extractor
         self.embedding_extractor = FaceNetEmbedding(
-            model_name=config.EMBEDDING_MODEL,
-            device=config.DEVICE
+            model_name=config.get("embedding.embedding_model"),
+            device=config.get("device.type")
         )
         
         # Vector database
         self.db = FaceVectorDB(
-            persist_directory=str(config.DB_DIR),
-            collection_name=config.COLLECTION_NAME
+            persist_directory=str(config.get("paths.db_dir")),
+            collection_name=config.get("vector_database.collection_name")
         )
     
-    def process_single_image(self, image_path: Path, person_id: Optional[str] = None):
+    def process_single_image(self, image_path: Path):
         """
         Process single image through entire pipeline
         
@@ -84,12 +84,20 @@ class FaceProcessingPipeline:
         
         metadata = {
             "processing_time": processing_time,
-            "detector": self.config.DETECTOR_TYPE
+            "detector": self.config.get("face_detection.detector_type")
         }
         
         return True, embedding, metadata
     
-    def build_database(self, image_folder: Path, person_id_mapping: Optional[Dict] = None):
+    @staticmethod
+    def parse_person_id_from_filename(filename: str) -> str:
+        """Extract person ID from filename"""
+        parts = filename.split('_')
+        if len(parts) >= 2:
+            return f"{parts[0]}_{parts[1]}"
+        return "unknown"
+    
+    def build_database(self, image_folder: str = "./data/images"):
         """
         Build database from folder of images
         
@@ -98,13 +106,14 @@ class FaceProcessingPipeline:
             person_id_mapping: Optional dict mapping image filename to person_id
         """
         # Get all image files
-        image_paths = list(image_folder.glob("*.jpg")) + \
-                     list(image_folder.glob("*.png")) + \
-                     list(image_folder.glob("*.jpeg"))
+        image_folder_path = Path(image_folder)
+        image_paths = list(image_folder_path.glob("*.jpg")) + \
+                     list(image_folder_path.glob("*.png")) + \
+                     list(image_folder_path.glob("*.jpeg"))
         
         print(f"\nProcessing {len(image_paths)} images...")
-        print(f"Detector: {self.config.DETECTOR_TYPE}")
-        print(f"Device: {self.config.DEVICE}\n")
+        print(f"Detector: {self.config.get("face_detection.detector_type")}")
+        print(f"Device: {self.config.get("device.type")}\n")
         
         successful = 0
         failed = 0
@@ -116,11 +125,9 @@ class FaceProcessingPipeline:
         metadatas_batch = []
         
         for img_path in tqdm(image_paths, desc="Processing images"):
-            person_id = None
-            if person_id_mapping:
-                person_id = person_id_mapping.get(img_path.name)
-            
-            success, embedding, metadata = self.process_single_image(img_path, person_id)
+            # get the person id of the image
+            person_id = FaceProcessingPipeline.parse_person_id_from_filename(str(img_path))
+            success, embedding, metadata = self.process_single_image(img_path)
             
             if success:
                 embeddings_batch.append(embedding)
@@ -130,7 +137,7 @@ class FaceProcessingPipeline:
                 successful += 1
                 
                 # Batch insert when batch is full
-                if len(embeddings_batch) >= self.config.BATCH_SIZE:
+                if len(embeddings_batch) >= self.config.get("batch_processing.batch_size"):
                     self.db.add_embeddings_batch(
                         embeddings_batch, paths_batch, ids_batch, metadatas_batch
                     )
@@ -146,9 +153,12 @@ class FaceProcessingPipeline:
         
         # Insert remaining embeddings
         if embeddings_batch:
-            self.db.add_embeddings_batch(
+            try:
+                self.db.add_embeddings_batch(
                 embeddings_batch, paths_batch, ids_batch, metadatas_batch
             )
+            except Exception as e:
+                logger.error(f"Error during adding embedding to db : {e}")
         
         # Print summary
         print(f"\n{'='*60}")
@@ -159,3 +169,8 @@ class FaceProcessingPipeline:
         print(f"Failed: {failed}")
         print(f"Total in database: {self.db.get_count()}")
         print(f"{'='*60}\n")
+
+if __name__ == "__main__":
+    config = Config()
+    pipeline_ = FaceProcessingPipeline(config)
+    pipeline_.build_database()

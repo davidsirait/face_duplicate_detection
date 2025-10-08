@@ -1,0 +1,44 @@
+# config.yaml - Face Duplicate Detection Configuration
+
+# Paths
+paths:
+  data_dir: "./data"
+  db_dir: "./face_db"
+  logs_dir: "./logs"
+  results_dir: "./results"
+  yunet_model_path: "./model/face_detection_yunet_2023mar.onnx"
+
+# Face Detection Settings
+face_detection:
+  detector_type: "mtcnn"  # "mtcnn" or "yunet"
+  min_face_size: 20
+  detection_confidence: 0.9
+
+# Face Recognition Settings
+embedding:
+  embedding_model: "vggface2"  # "vggface2" or "casia-webface"
+  embedding_dim: 512
+
+# Duplicate Detection Settings
+duplicate_detection:
+  threshold: 0.6  # Distance threshold (lower = stricter)
+
+# Batch Processing Settings
+batch_processing:
+  batch_size: 32
+  num_workers: 4
+
+# Vector Database Settings
+vector_database:
+  collection_name: "face_embeddings"
+  distance_metric: "cosine"  # "cosine", "l2", or "ip"
+
+# Device Settings
+device:
+  type: "cuda"  # "cpu" or "cuda"
+
+# Thumbnail Settings
+thumbnail:
+  size: [100, 100]  # [width, height]
+  quality: 85
+  storage_method: "base64"  # "base64" (in DB) or "file" (separate files)

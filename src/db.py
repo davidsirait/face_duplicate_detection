@@ -22,10 +22,10 @@ class FaceVectorDB:
             persist_directory: Directory to persist database
             collection_name: Name of the collection
         """
-        self.client = chromadb.Client(Settings(
-            persist_directory=persist_directory,
-            anonymized_telemetry=False
-        ))
+        self.client = chromadb.PersistentClient(            
+            path=persist_directory,
+            settings=Settings(anonymized_telemetry=False)
+        )
         
         self.collection = self.client.get_or_create_collection(
             name=collection_name,
