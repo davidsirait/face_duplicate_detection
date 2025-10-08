@@ -92,9 +92,9 @@ class FaceProcessingPipeline:
     @staticmethod
     def parse_person_id_from_filename(filename: str) -> str:
         """Extract person ID from filename"""
-        parts = filename.split('_')
-        if len(parts) >= 2:
-            return f"{parts[0]}_{parts[1]}"
+        parts = Path(filename).stem.split('_')
+        if parts:
+            return parts[0]
         return "unknown"
     
     def build_database(self, image_folder: str = "./data/images"):
