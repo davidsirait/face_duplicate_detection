@@ -6,25 +6,23 @@ import base64
 from typing import Tuple, List, Optional, Dict
 import json
 import os
+import shutil
 import sys
 sys.path.append("./src")
 
 # Import your existing modules
+from inference import FaceDuplicateDetector
 from db import FaceVectorDB
 from detector import FaceDetector  # Assuming you have face processing logic
 
 class FaceRecognitionApp:
-    def __init__(self, db_path="./face_db", collection_name="face_embeddings"):
+    def __init__(self, config_path = "./config.yaml"):
         """Initialize the Face Recognition App"""
-        self.db = FaceVectorDB(
-            persist_directory=db_path,
-            collection_name=collection_name
-        )
-        self.face_processor = FaceDetector()  # Your face processing class
+        self.predictor = FaceDuplicateDetector(config_path=config_path)  # Your face processing class
         
     def process_uploaded_image(
         self, 
-        image: np.ndarray, 
+        image: str,  
         person_name: str, 
         add_to_db: bool
     ) -> Tuple[str, List[Tuple[Image.Image, str]], str]:
@@ -42,100 +40,59 @@ class FaceRecognitionApp:
         try:
             # Validate inputs
             if image is None:
-                return "❌ No image uploaded", [], "{}"
+                return "No image uploaded", [], "{}"
             
             if not person_name or person_name.strip() == "":
-                return "❌ Please provide a person name", [], "{}"
+                # return "Please provide the person name", [], "{}"
+                return "Please provide the person name"
             
-            # Convert numpy array to PIL Image
-            pil_image = Image.fromarray(image.astype('uint8'), 'RGB')
-            
-            # Extract face embedding (using your existing face processor)
-            # This is a placeholder - replace with your actual face extraction logic
-            embedding = self.extract_face_embedding(pil_image)
-            
-            if embedding is None:
-                return "❌ No face detected in the image", [], "{}"
-            
-            # Check for duplicates
-            is_duplicate, match_info = self.db.check_duplicate(
-                embedding, 
-                threshold=0.6
-            )
-            
-            # Get top 6 matches for display
-            search_results = self.db.search(embedding, n_results=6)
-            
-            # Process search results with similarity scores
-            match_images_with_scores = self.process_search_results_with_scores(search_results)
+            # check for duplicates
+            is_duplicate, match_info, top_matches = self.predictor.check_duplicate(image)
+
+            # process top_matches results
+            gallery_images_with_captions = self.process_search_results_with_scores(top_matches)
             
             # Prepare status message
             if is_duplicate:
                 similarity_score = 1 - match_info['distance']  # Convert distance to similarity
-                status_msg = f"⚠️ **Duplicate Found!**\n"
+                status_msg = f"**Duplicate Found!**\n"
                 status_msg += f"Similarity Score: {similarity_score:.2%}\n"
                 status_msg += f"Matched Person: {match_info.get('metadata', {}).get('person_id', 'Unknown')}"
             else:
-                status_msg = "✅ **No duplicate found**"
+                status_msg = "**No duplicate found**"
             
             # Add to database if requested and not duplicate
             if add_to_db and not is_duplicate:
-                # Create temp directory if it doesn't exist
-                os.makedirs("./temp", exist_ok=True)
-                
-                # Save the image temporarily (in production, save to proper storage)
-                temp_path = f"./temp/{person_name}_{np.random.randint(10000)}.jpg"
-                pil_image.save(temp_path)
-                
-                # Add to database
-                doc_id = self.db.add_embedding(
-                    embedding=embedding,
-                    image_path=temp_path,
-                    person_id=person_name.strip(),
-                    metadata={"source": "gradio_upload"}
-                )
-                
-                status_msg += f"\n\n✅ **Added to database** with ID: {doc_id[:8]}..."
+                success, doc_id = self.predictor.add_to_database(image, person_id = person_name)
+                if success:
+                    status_msg += f"\n\n**Added to database** with ID: {doc_id[:8]}..."
+                else:
+                    status_msg += "\n\nNot added to database, error occured"
             elif add_to_db and is_duplicate:
-                status_msg += "\n\n⚠️ Not added to database (duplicate detected)"
+                status_msg += "\n\nNot added to database (duplicate detected)"
             
             # Prepare detailed JSON results
+            metadatas = top_matches.get('metadatas')
+            distances = top_matches.get('distances')
+
             details = {
                 "person_name": person_name,
                 "is_duplicate": is_duplicate,
-                "num_matches": len(match_images_with_scores),
+                "num_matches": len(metadatas[0]),
                 "matches": [
                     {
                         "rank": i + 1,
-                        "similarity_score": float(1 - search_results['distances'][0][i]),
-                        "distance": float(search_results['distances'][0][i]),
-                        "person_id": search_results['metadatas'][0][i].get('person_id', 'Unknown') if i < len(search_results['metadatas'][0]) else 'Unknown'
+                        "similarity_score": float(1 - distances[0][i]),
+                        "distance": float(distances[0][i]),
+                        "person_id": metadatas[0][i].get('person_id', 'Unknown') if i < len(metadatas[0]) else 'Unknown'
                     }
-                    for i in range(min(6, len(search_results['distances'][0])))
-                ] if search_results['distances'] else [],
-                "database_count": self.db.get_count()
+                    for i in range(min(6, len(metadatas[0])))
+                ] if distances else [],
             }
-            
-            return status_msg, match_images_with_scores, json.dumps(details, indent=2)
+            return status_msg, gallery_images_with_captions, json.dumps(details, indent=2)
             
         except Exception as e:
-            return f"❌ Error: {str(e)}", [], "{}"
-    
-    def extract_face_embedding(self, image: Image.Image) -> Optional[np.ndarray]:
-        """
-        Extract face embedding from image
-        Replace this with your actual face extraction logic
-        """
-        # Placeholder - replace with your actual implementation
-        # For example using face_recognition library or your custom model
-        try:
-            # This should return a numpy array of the face embedding
-            # Example: return self.face_processor.extract_embedding(image)
-            
-            # For demo purposes, returning random embedding
-            return np.random.randn(512)  # Assuming 512-dim embeddings
-        except:
-            return None
+            return f" Error: {str(e)}", [], "{}"
     
     def process_search_results_with_scores(self, search_results: dict) -> List[Tuple[Image.Image, str]]:
         """
@@ -170,7 +127,7 @@ class FaceRecognitionApp:
                     img = self.add_score_overlay(img, similarity_score)
                     
                     # Create caption with similarity score
-                    caption = f"{person_id}\n📊 {similarity_score:.1%} match"
+                    caption = f"{person_id}\n  {similarity_score:.1%} match"
                     
                     images_with_captions.append((img, caption))
                     
@@ -266,7 +223,7 @@ def create_gradio_app():
                 # Input components
                 image_input = gr.Image(
                     label="Upload Face Image",
-                    type="numpy",
+                    type="filepath",
                     height=300
                 )
                 
@@ -326,7 +283,11 @@ def create_gradio_app():
         process_btn.click(
             fn=app.process_uploaded_image,
             inputs=[image_input, person_name_input, add_to_db_checkbox],
-            outputs=[status_output, gallery_output, json_output]
+            outputs=[
+                status_output,
+                gallery_output, 
+                json_output
+                ]
         )
         
         refresh_stats_btn.click(

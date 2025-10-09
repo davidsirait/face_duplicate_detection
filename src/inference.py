@@ -81,42 +81,4 @@ class FaceDuplicateDetector:
         
         return False, metadata
     
-    def update_online_metrics(self, is_duplicate: bool, ground_truth: bool, 
-                             distance: float, processing_time: float):
-        """
-        Update online metrics with new result
-        
-        Args:
-            is_duplicate: Predicted duplicate status
-            ground_truth: True duplicate status
-            distance: Embedding distance
-            processing_time: Processing time in seconds
-        """
-        self.online_metrics.add_comparison(
-            distance=distance,
-            is_same_person=ground_truth,
-            prediction=is_duplicate,
-            processing_time=processing_time
-        )
-    
-    def get_online_metrics(self) -> Dict:
-        """
-        Get current online metrics
-        
-        Returns:
-            Dict: Computed metrics
-        """
-        return self.online_metrics.compute_metrics(self.config.DUPLICATE_THRESHOLD)
-    
-    def print_online_metrics(self):
-        """Print online metrics to console"""
-        return self.online_metrics.print_metrics(self.config.DUPLICATE_THRESHOLD)
-    
-    def save_online_metrics(self, filepath: str):
-        """
-        Save online metrics to file
-        
-        Args:
-            filepath: Path to save JSON file
-        """
-        self.online_metrics.save_metrics(filepath, self.config.DUPLICATE_THRESHOLD)
+   
