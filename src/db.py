@@ -102,14 +102,23 @@ class FaceVectorDB:
             metadata.update({
                 "image_path": str(img_path),
                 "person_id": person_ids[i],
-                "thumbnail": thumbnail_b64
             })
+
+            # check if thumbnail is none 
+            if thumbnail_b64 is not None:
+                metadata.update({
+                    "thumbnail": thumbnail_b64
+                })
+            else:
+                metadata.update({
+                    "thumbnail": ""
+                })                
         
         self.collection.add(
             embeddings=[emb.tolist() for emb in embeddings],
             documents=[str(path) for path in image_paths],
             ids=ids,
-            metadatas=metadatas
+            metadatas=metadatas 
         )
         
         return ids

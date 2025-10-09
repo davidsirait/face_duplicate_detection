@@ -35,7 +35,7 @@ vector_database:
 
 # Device Settings
 device:
-  type: "cuda"  # "cpu" or "cuda"
+  type: "cpu"  # "cpu" or "cuda"
 
 # Thumbnail Settings
 thumbnail:
