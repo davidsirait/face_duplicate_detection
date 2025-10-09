@@ -14,7 +14,7 @@ from PIL import Image
 class FaceVectorDB:
     """ChromaDB wrapper for face embeddings storage and similarity search"""
     
-    def __init__(self, persist_directory="./face_db", collection_name="face_embeddings"):
+    def __init__(self, persist_directory:str = "./face_db", collection_name: str = "face_embeddings"):
         """
         Initialize ChromaDB client
         
@@ -59,7 +59,18 @@ class FaceVectorDB:
     
     def add_embedding(self, embedding: np.ndarray, image_path: str, 
                      person_id: Optional[str] = None, metadata: Optional[Dict] = None):
-        """Add embedding with thumbnail"""
+        """
+        Add embedding and thumbnail to vector db
+        
+        Args:
+            embedding: array of the image embedding
+            image_path: Path to original image
+            person_id: name of the person in the image
+            metadata: image metadata
+            
+        Returns:
+            str: doc_id identifier for the record in the vector db
+        """
         if metadata is None:
             metadata = {}
         
@@ -87,7 +98,18 @@ class FaceVectorDB:
                             image_paths: List[str],
                             person_ids: Optional[List[str]] = None,
                             metadatas: Optional[List[Dict]] = None):
-        """Add batch with thumbnails"""
+        """
+        Insert embedding and thumbnail to vector db in batches
+        
+        Args:
+            embedding: array of the image embedding
+            image_path: Path to original image
+            person_id: name of the person in the image
+            metadata: image metadata
+            
+        Returns:
+            list: list of doc_id identifier for the record in the vector db
+        """
         if person_ids is None:
             person_ids = ["unknown"] * len(embeddings)
         

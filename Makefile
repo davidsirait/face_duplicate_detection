@@ -3,6 +3,17 @@
 
 PYTHON = python3
 
+# Download files async
+.PHONY: async-dl
+async-dl:
+	$(PYTHON) src/image_downloader/async_download.py
+
+# Download files async
+.PHONY: seq-dl
+seq-dl:
+	$(PYTHON) src/image_downloader/sequential_download.py
+
+
 # Clear the database
 .PHONY: clear-db
 clear-db:
@@ -17,3 +28,4 @@ build-db: clear-db
 .PHONY: run
 run:
 	$(PYTHON) src/pipeline.py
+

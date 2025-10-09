@@ -1,3 +1,5 @@
+# Python Script to download all the image from csv sequentially
+
 import pandas as pd
 import numpy as np
 
