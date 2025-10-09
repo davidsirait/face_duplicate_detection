@@ -1,12 +1,14 @@
+# Python Script to download all the image from csv asynchronously
+
 import asyncio
 import aiohttp
 import pandas as pd
 from pathlib import Path
 from tqdm.asyncio import tqdm
-from helper import sanitize_dataframe
-import re
+import sys
+sys.path.append("./src")
+from utils import sanitize_dataframe
 from urllib.parse import urlparse
-import time
 
 async def download_image_async(session, url, filepath, semaphore, retry_count=1):
     """

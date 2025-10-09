@@ -5,7 +5,9 @@ import requests
 from pathlib import Path
 from tqdm import tqdm
 import time
-from helper import sanitize_dataframe
+import sys
+sys.path.append("./src")
+from utils import sanitize_dataframe
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
