@@ -23,4 +23,11 @@ build-db: clear-db
 clear-db:
 	$(PYTHON) src/utils.py
 
+# Run the webapp
+.PHONY: serve
+serve:
+	gradio src/app.py
+
+
+
 
