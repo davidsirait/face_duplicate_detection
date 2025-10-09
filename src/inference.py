@@ -12,15 +12,15 @@ from pipeline import FaceProcessingPipeline
 class FaceDuplicateDetector:
     """Real-time duplicate detection with online metrics tracking"""
     
-    def __init__(self, config: Config):
+    def __init__(self, config_path: str  = "./config.yaml"):
         """
         Initialize duplicate detector
         
         Args:
             config: Configuration object
         """
-        self.config = config
-        self.pipeline = FaceProcessingPipeline(config)
+        self.config = Config(config_path)
+        self.pipeline = FaceProcessingPipeline(self.config)
     
     def check_duplicate(self, image_path: Path, n_results:int = 6) -> Tuple[bool, Optional[Dict]]:
         """
@@ -38,7 +38,7 @@ class FaceDuplicateDetector:
         
         # Process image through pipeline
         success, embedding, metadata = self.pipeline.process_single_image(image_path)
-        
+
         if not success:
             return False, metadata
         

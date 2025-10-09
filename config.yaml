@@ -3,7 +3,7 @@
 # Paths
 paths:
   data_dir: "./data"
-  db_dir: "./face_db"
+  db_dir: "../face_db"
   logs_dir: "./logs"
   results_dir: "./results"
   yunet_model_path: "./model/face_detection_yunet_2023mar.onnx"
