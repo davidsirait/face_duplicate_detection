@@ -43,8 +43,7 @@ class FaceRecognitionApp:
                 return "No image uploaded", [], "{}"
             
             if not person_name or person_name.strip() == "":
-                # return "Please provide the person name", [], "{}"
-                return "Please provide the person name"
+                return "Please provide the person name", [], "{}"
             
             # check for duplicates
             is_duplicate, match_info, top_matches = self.predictor.check_duplicate(image)
@@ -55,8 +54,8 @@ class FaceRecognitionApp:
             # Prepare status message
             if is_duplicate:
                 similarity_score = 1 - match_info['distance']  # Convert distance to similarity
-                status_msg = f"**Duplicate Found!**\n"
-                status_msg += f"Similarity Score: {similarity_score:.2%}\n"
+                status_msg = f"<h1>**Duplicate Found!**</h1>\n"
+                status_msg += f"Similarity Score: {similarity_score:.2%}<br />"
                 status_msg += f"Matched Person: {match_info.get('metadata', {}).get('person_id', 'Unknown')}"
             else:
                 status_msg = "**No duplicate found**"
@@ -124,7 +123,7 @@ class FaceRecognitionApp:
                         img = self.create_placeholder_image(person_id)
                     
                     # Add score overlay to image (optional - you can remove this if you prefer clean images)
-                    img = self.add_score_overlay(img, similarity_score)
+                    # img = self.add_score_overlay(img, similarity_score)
                     
                     # Create caption with similarity score
                     caption = f"{person_id}\n  {similarity_score:.1%} match"
@@ -243,11 +242,6 @@ def create_gradio_app():
                     variant="primary",
                     size="lg"
                 )
-                
-                # Database stats
-                with gr.Accordion("Database Info", open=False):
-                    stats_text = gr.Markdown(app.get_database_stats())
-                    refresh_stats_btn = gr.Button("🔄 Refresh Stats", size="sm")
             
             with gr.Column(scale=2):
                 # Output components
@@ -272,8 +266,8 @@ def create_gradio_app():
         with gr.Row():
             gr.Examples(
                 examples=[
-                    ["example1.jpg", "John Doe", False],
-                    ["example2.jpg", "Jane Smith", True],
+                    ["./src/app/example1.jpeg", "John Doe", False],
+                    ["./src/app/example2.jpeg", "Jane Smith", True],
                 ],
                 inputs=[image_input, person_name_input, add_to_db_checkbox],
                 label="Example Inputs"
@@ -288,12 +282,6 @@ def create_gradio_app():
                 gallery_output, 
                 json_output
                 ]
-        )
-        
-        refresh_stats_btn.click(
-            fn=app.get_database_stats,
-            inputs=[],
-            outputs=[stats_text]
         )
         
         # Add custom CSS for better styling

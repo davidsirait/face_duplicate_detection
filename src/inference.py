@@ -69,9 +69,7 @@ class FaceDuplicateDetector:
         Returns:
             Tuple[bool, str/dict]: (success, document_id or error_info)
         """
-        success, embedding, metadata = self.pipeline.process_single_image(
-            image_path, person_id
-        )
+        success, embedding, metadata = self.pipeline.process_single_image(image_path)
         
         if success:
             doc_id = self.pipeline.db.add_embedding(
