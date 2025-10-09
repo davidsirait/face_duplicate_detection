@@ -10,7 +10,7 @@ from pipeline import FaceProcessingPipeline
 
 
 class FaceDuplicateDetector:
-    """Real-time duplicate detection with online metrics tracking"""
+    """Real-time duplicate detection """
     
     def __init__(self, config_path: str  = "./config.yaml"):
         """
@@ -22,17 +22,19 @@ class FaceDuplicateDetector:
         self.config = Config(config_path)
         self.pipeline = FaceProcessingPipeline(self.config)
     
-    def check_duplicate(self, image_path: Path, n_results:int = 6) -> Tuple[bool, Optional[Dict]]:
+    def check_duplicate(self, image_path: Path, n_results:int = 6) -> Tuple[bool, Optional[Dict], Optional[Dict]]:
         """
         Check if image contains a duplicate face
         
         Args:
             image_path: Path to image file
-            
+            n_result: number of similiar results to return
+
         Returns:
-            Tuple[bool, Optional[Dict]]: (is_duplicate, match_info)
+            Tuple[bool, Optional[Dict], Optional[Dict]]: (is_duplicate, match_info, top_matches)
                 - is_duplicate: True if duplicate found
                 - match_info: Dictionary with match details or error info
+                - top_matches : Metadata information of most similiar results 
         """
         start_time = time.time()
         

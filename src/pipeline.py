@@ -45,12 +45,15 @@ class FaceProcessingPipeline:
             model_name=config.get("embedding.embedding_model"),
             device=config.get("device.type")
         )
-        
+
         # Vector database
         self.db = FaceVectorDB(
             persist_directory=str(config.get("paths.db_dir")),
             collection_name=config.get("vector_database.collection_name")
         )
+
+        # checking
+        print(f"current records count : {self.db.get_count()}")
     
     def process_single_image(self, image_path: Path):
         """
@@ -58,7 +61,6 @@ class FaceProcessingPipeline:
         
         Args:
             image_path: Path to image file
-            person_id: Optional person identifier
             
         Returns:
             Tuple: (success: bool, embedding: np.ndarray, metadata: dict)
@@ -103,7 +105,6 @@ class FaceProcessingPipeline:
         
         Args:
             image_folder: Path to folder containing images
-            person_id_mapping: Optional dict mapping image filename to person_id
         """
         # Get all image files
         image_folder_path = Path(image_folder)

@@ -266,8 +266,8 @@ def create_gradio_app():
         with gr.Row():
             gr.Examples(
                 examples=[
-                    ["./src/app/example1.jpeg", "John Doe", False],
-                    ["./src/app/example2.jpeg", "Jane Smith", True],
+                    ["./src/asset/example1.jpeg", "John Doe", False],
+                    ["./src/asset/example2.jpeg", "Jane Smith", True],
                 ],
                 inputs=[image_input, person_name_input, add_to_db_checkbox],
                 label="Example Inputs"

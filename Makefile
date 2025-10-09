@@ -13,19 +13,14 @@ async-dl:
 seq-dl:
 	$(PYTHON) src/image_downloader/sequential_download.py
 
+# Build database (clear first, then build)
+.PHONY: build-db
+build-db: clear-db
+	$(PYTHON) src/pipeline.py 
 
 # Clear the database
 .PHONY: clear-db
 clear-db:
 	$(PYTHON) src/utils.py
 
-# Build database (clear first, then build)
-.PHONY: build-db
-build-db: clear-db
-	$(PYTHON) src/pipeline.py 
-
-# Run pipeline
-.PHONY: run
-run:
-	$(PYTHON) src/pipeline.py
 

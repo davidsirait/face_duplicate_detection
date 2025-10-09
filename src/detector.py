@@ -1,5 +1,5 @@
 """
-Face detection module with unified interface
+Face detection module, accept either MTCNN or YuNet detector model
 """
 import torch
 from facenet_pytorch import MTCNN
@@ -8,10 +8,9 @@ import cv2
 
 logger = logging.getLogger(__name__)
 
-
 class FaceDetector:
     """
-    Unified face detector supporting MTCNN and YuNet
+    Face detector supporting MTCNN and YuNet
     
     Usage:
         detector = FaceDetector(detector_type='mtcnn', device='cpu') 
