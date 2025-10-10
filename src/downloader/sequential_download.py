@@ -116,7 +116,7 @@ def download_images_robust(csv_file, output_folder='downloaded_images', delay=0.
     Robust image downloader with comprehensive error handling
     """
     output_path = Path(output_folder)
-    output_path.mkdir(exist_ok=True)
+    output_path.mkdir(parents=True, exist_ok=True) 
     
     # Read CSV
     df = pd.read_csv(csv_file)

@@ -7,7 +7,7 @@ from pathlib import Path
 from tqdm.asyncio import tqdm
 import sys
 sys.path.append("./src")
-from utils import sanitize_dataframe
+from utils.file_utils import sanitize_dataframe
 from urllib.parse import urlparse
 
 async def download_image_async(session, url, filepath, semaphore, retry_count=1):
@@ -93,7 +93,7 @@ async def download_images_async(csv_file, output_folder='downloaded_images',
         delay_between_batches: Delay in seconds between batches (default: 0)
     """
     output_path = Path(output_folder)
-    output_path.mkdir(exist_ok=True)
+    output_path.mkdir(parents=True, exist_ok=True) 
     
     # Read CSV
     df = pd.read_csv(csv_file)
