@@ -1,6 +1,12 @@
 """
 End-to-end pipeline for processing face images
 """
+import sys
+from pathlib import Path
+
+# Add src to path so imports work when running directly
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from pathlib import Path
 from tqdm import tqdm
 import time

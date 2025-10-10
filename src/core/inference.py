@@ -1,7 +1,12 @@
 """
 Real-time face duplicate detection and inference
-MODIFIED: Better error handling (HIGH PRIORITY FIX #3)
 """
+import sys
+from pathlib import Path
+
+# Add src to path so imports work when running directly
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import time
 import logging
 from pathlib import Path

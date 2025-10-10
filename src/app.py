@@ -72,7 +72,7 @@ class FaceRecognitionApp:
                 
                 # Prepare status message
                 if is_duplicate:
-                    similarity_score = 1 - match_info['distance']
+                    similarity_score = max(0.0, 1 - match_info['distance']) # prevent negative similiarity score
                     status_msg = f"<h1>**Duplicate Found!**</h1>\n"
                     status_msg += f"Similarity Score: {similarity_score:.2%}<br />"
                     status_msg += f"Matched Person: {match_info.get('metadata', {}).get('person_id', 'Unknown')}"
@@ -129,7 +129,7 @@ class FaceRecognitionApp:
             if metadata:
                 try:
                     distance = distances[i] if i < len(distances) else 1.0
-                    similarity_score = 1 - distance
+                    similarity_score = max(0.0, 1 - distance)  # force negative similiarity to zero
                     person_id = metadata.get('person_id', 'Unknown')
                     
                     # Load thumbnail or create placeholder
@@ -165,7 +165,7 @@ class FaceRecognitionApp:
             return f"Error getting stats: {str(e)}"
 
 
-# HEALTH CHECK ENDPOINT (HIGH PRIORITY FIX #2)
+# health check endpoint, if needed
 def health_check():
     """Simple health check function"""
     try:
