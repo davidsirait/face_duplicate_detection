@@ -26,11 +26,7 @@ def main():
     print(f"Launching on http://localhost:{port}")
     
     demo.launch(
-        server_name="0.0.0.0",
-        server_port=port,
-        share=False,
-        debug=True,
-        show_error=True
+        share=True
     )
 
 
