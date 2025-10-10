@@ -28,12 +28,12 @@ clear-db:
 serve:
 	gradio src/app.py
 
-# NEW: Run with main.py
+# Run with main.py
 .PHONY: run
 run:
 	$(PYTHON) src/main.py
 
-# NEW: View metrics
+# View metrics
 .PHONY: metrics
 metrics:
 	@if [ -f metrics.jsonl ]; then \
@@ -42,5 +42,7 @@ metrics:
 		echo "No metrics file found"; \
 	fi
 
-
+.PHONY: evaluate
+evaluate:
+	$(PYTHON) src/monitoring/evaluate_accuracy.py
 
