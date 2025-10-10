@@ -16,3 +16,4 @@ chromadb
 tqdm 
 pyyaml
 gradio
+python-dotenv

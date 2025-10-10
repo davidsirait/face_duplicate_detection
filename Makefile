@@ -16,12 +16,12 @@ seq-dl:
 # Build database (clear first, then build)
 .PHONY: build-db
 build-db: clear-db
-	$(PYTHON) src/pipeline.py 
+	$(PYTHON) src/core/pipeline.py 
 
 # Clear the database
 .PHONY: clear-db
 clear-db:
-	$(PYTHON) src/utils.py
+	$(PYTHON) src/core/file_utils.py
 
 # Run the webapp
 .PHONY: serve

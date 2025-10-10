@@ -1,6 +1,14 @@
-.env
-/data
+.env 
 __pycache__
 .ipynb_checkpoints
+/data
 /face_db
 /logs
+*.pyc
+*.pyo
+*.egg-info
+.pytest_cache
+.mypy_cache
+htmlcov
+.coverage
+metrics.jsonl  
