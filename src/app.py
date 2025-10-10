@@ -242,6 +242,17 @@ def create_gradio_app():
                 with gr.Accordion("📋 Detailed Results", open=False):
                     json_output = gr.JSON(label="Match Details")
         
+        # Example section
+        with gr.Row():
+            gr.Examples(
+                examples=[
+                    ["./src/asset/example1.jpeg", "Ricky Kambuaya", False],
+                    ["./src/asset/example2.jpeg", "Marcelino Ferdinan", True],
+                ],
+                inputs=[image_input, person_name_input, add_to_db_checkbox],
+                label="Example Inputs"
+            )
+        
         # Event handlers
         process_btn.click(
             fn=app.process_uploaded_image,
