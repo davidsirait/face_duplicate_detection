@@ -2,7 +2,7 @@
 
 This is an mvp-grade face recognition system to detect duplicate faces in a vector database. The app is built with deep learning models and serve using gradio for interactive user experience
 
-## TL;DR quick run
+## TL;DR Quick  run
 To run and test the application locally, run these steps :
 
 ```bash
@@ -450,65 +450,6 @@ make serve
 python -m gradio src/app.py
 ```
 
-### Project Structure
-
-```
-face-recognition-mvp/
-├── src/
-│   ├── core/                    # Core business logic
-│   │   ├── config.py           # Configuration loader
-│   │   ├── detector.py         # Face detection
-│   │   ├── embedding.py        # Embedding extraction
-│   │   ├── inference.py        # Inference engine
-│   │   ├── pipeline.py         # End-to-end pipeline
-│   │   └── preprocessing.py    # Image preprocessing
-│   ├── db/
-│   │   └── vector_db.py        # ChromaDB wrapper
-│   ├── downloaders/
-│   │   ├── async_download.py   # Async image downloader
-│   │   └── sequential_download.py
-│   ├── monitoring/
-│   │   └── metrics_tracker.py  # Performance metrics
-│   ├── utils/
-│   │   ├── file_utils.py
-│   │   └── validators.py       # Input validation
-│   └── app.py                  # Gradio interface
-├── tests/
-│   ├── unit/                   # Unit tests
-│   ├── integration/            # Integration tests
-│   └── fixtures/               # Test data
-├── config.yaml                 # Main configuration
-├── requirements.txt            # Dependencies
-├── Dockerfile                  # Container definition
-└── Makefile                    # Development commands
-```
-
-### Adding New Features
-
-1. **New Detector**: Implement in `src/detector.py`
-2. **New Embedding Model**: Modify `src/embedding.py`
-3. **Custom Database**: Extend `src/vector_db.py`
-4. **UI Changes**: Edit `src/app.py`
-
-## Testing
-
-### Test Structure
-
-```
-tests/
-├── conftest.py              # Shared fixtures
-├── unit/                    # Unit tests
-│   ├── test_config.py
-│   ├── test_detector.py
-│   ├── test_embedding.py
-│   ├── test_db.py
-│   └── test_preprocessing.py
-└── integration/             # Integration tests
-    ├── test_end_to_end.py
-    └── test_gradio_app.py
-```
-
-
 ## Performance Metrics
 
 The system tracks three key metrics:
@@ -559,8 +500,8 @@ metrics = tracker.evaluate(detection_function)
 # View latest metrics
 make metrics
 
-# Generate summary report
-make metrics-summary
+# Run the accuracy metric
+make evaluate
 ```
 
 Metrics are stored in `metrics.jsonl` in JSON Lines format:
@@ -569,112 +510,6 @@ Metrics are stored in `metrics.jsonl` in JSON Lines format:
 {"timestamp": "2025-01-10T12:00:00", "metric": "end_to_end_latency", "latency_ms": 1523.4}
 {"timestamp": "2025-01-10T12:00:05", "metric": "chromadb_query_time", "query_time_ms": 234.1}
 ```
-
-## API Reference
-
-### FaceDuplicateDetector
-
-```python
-detector = FaceDuplicateDetector(config_path="./config.yaml")
-```
-
-**Methods**:
-
-- `check_duplicate(image_path, n_results=6)`: Check for duplicates
-  - Returns: `(is_duplicate, match_info, top_matches)`
-  
-- `add_to_database(image_path, person_id)`: Add new face
-  - Returns: `(success, doc_id)`
-
-### FaceVectorDB
-
-```python
-db = FaceVectorDB(persist_directory="./face_db", collection_name="face_embeddings")
-```
-
-**Methods**:
-
-- `add_embedding(embedding, image_path, person_id, metadata)`: Add single embedding
-- `add_embeddings_batch(embeddings, paths, person_ids, metadatas)`: Batch add
-- `search(embedding, n_results)`: Find similar embeddings
-- `check_duplicate(embedding, threshold)`: Check if duplicate exists
-- `get_count()`: Get total embeddings in database
-- `clear()`: Clear all data
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: "No face detected"
-- **Solution**: Ensure image contains a clear, frontal face
-- Check face size is at least 20x20 pixels
-- Try adjusting `detection_confidence` in config.yaml
-
-**Issue**: Slow inference
-- **Solution**: Use GPU (`device.type: "cuda"` in config)
-- Switch to YuNet detector for faster detection
-- Reduce image size in preprocessing
-
-**Issue**: High memory usage
-- **Solution**: Reduce `batch_size` in config.yaml
-- Process fewer images at once
-- Use CPU instead of CUDA if VRAM limited
-
-**Issue**: Database not persisting
-- **Solution**: Check `db_dir` path is writable
-- Verify ChromaDB is properly initialized
-- Check for disk space
-
-**Issue**: Import errors
-- **Solution**: Ensure all dependencies installed: `make install`
-- Check Python version is 3.10+
-- Activate virtual environment
-
-### Debug Mode
-
-Enable detailed logging:
-
-```bash
-# In .env file
-LOG_LEVEL=DEBUG
-
-# Or set environment variable
-export LOG_LEVEL=DEBUG
-python -m gradio src/app.py
-```
-
-### Performance Profiling
-
-```python
-# Profile function execution
-python -m cProfile -o profile.stats src/pipeline.py
-
-# View results
-python -m pstats profile.stats
-```
-
-## Contributing
-
-Contributions are welcome. Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make changes with tests
-4. Run quality checks: `make pre-commit`
-5. Submit pull request
-
-### Code Style
-
-- Follow PEP 8 guidelines
-- Use type hints for function signatures
-- Write docstrings for all public functions
-- Keep functions under 50 lines when possible
-
-### Testing Requirements
-
-- All new features must include unit tests
-- Maintain test coverage above 80%
-- Integration tests for end-to-end workflows
 
 ## License
 
@@ -699,18 +534,3 @@ If you use this system in your research, please cite:
   url = {https://github.com/yourusername/face-recognition-mvp}
 }
 ```
-
-## Contact
-
-For questions or support, please open an issue on GitHub or contact the maintainers.
-
-## Changelog
-
-### Version 1.0.0 (2025-01-10)
-- Initial release
-- MTCNN and YuNet detector support
-- FaceNet embedding extraction
-- ChromaDB integration
-- Gradio web interface
-- Docker containerization
-- Comprehensive test suite
