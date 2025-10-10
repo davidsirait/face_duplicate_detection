@@ -42,6 +42,7 @@ metrics:
 		echo "No metrics file found"; \
 	fi
 
+# run the evaluation script to evaluate model accuracy
 .PHONY: evaluate
 evaluate:
 	$(PYTHON) src/monitoring/evaluate_accuracy.py

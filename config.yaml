@@ -11,8 +11,7 @@ paths:
 # Face Detection Settings
 face_detection:
   detector_type: "mtcnn"  # "mtcnn" or "yunet"
-  min_face_size: 20
-  detection_confidence: 0.9
+  min_face_size: 50
 
 # Face Recognition Settings
 embedding:
