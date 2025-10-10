@@ -1,50 +1,71 @@
-# Face Recognition Duplicate Detection System
+# Face Duplicate Detection System
 
 This is an mvp-grade face recognition system to detect duplicate faces in a vector database. The app is built with deep learning models and serve using gradio for interactive user experience
 
 ## TL;DR Quick  run
 To run and test the application locally, run these steps :
 
+#### 1. Install python if not available and set up dependencies
+
+**Ubuntu/Debian**:
 ```bash
-# 1. Clone repository
+sudo apt-get update
+sudo apt-get install -y build-essential libglib2.0-0 libsm6 libxext6 libxrender-dev
+```
+
+**macOS**:
+```bash
+brew install python@3.12
+```
+
+**Windows**:
+- Install Python from python.org
+- Visual C++ Build Tools may be required
+
+#### 2. Set up python environment
+
+Option 1: Using venv (recommended)
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+Option 2: Using conda
+```bash
+conda create -n face-recognition python=3.10
+conda activate face-recognition
+```
+
+#### 3. Install package Dependencies
+
+```bash
+
+# Install requirement manually:
+pip install -r requirements.txt
+
+```
+
+#### 4. Clone the repository
+```bash
+#  Clone repository
 git clone https://github.com/yourusername/face-recognition-mvp.git
 cd face-recognition-mvp
+```
 
-# Assuming we don't have the images available, then you can run this command
-
-# 2. Download face images into a directory called data/images
+#### 5. Assuming we don't have the images available, then you can run this command
+```bash
+# Download face images into a directory called data/images
 make async-dl
 # or for sequential process run make seq-dl
 
-# 3. Build vector database, which will be saved in a face_db folder
+# Build vector database, which will be saved in a face_db folder
 make build-db
 
-# 4. Start the gradio application
+# Start the gradio application
 make run
 ```
 
 Access the application at: http://localhost:7860
-
-
-## Table of Contents
-
-- [Architecture Overview](#architecture-overview)
-- [Technical Stack](#technical-stack)
-- [Face Recognition Pipeline](#face-recognition-pipeline)
-- [Database Architecture](#database-architecture)
-- [Gradio Web Application](#gradio-web-application)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Development](#development)
-- [Testing](#testing)
-- [Docker Deployment](#docker-deployment)
-- [Performance Metrics](#performance-metrics)
-- [API Reference](#api-reference)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Architecture Overview
 
