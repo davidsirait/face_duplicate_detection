@@ -12,7 +12,7 @@ sys.path.append("./src")
 
 # Import your existing modules
 from inference import FaceDuplicateDetector
-from db import FaceVectorDB
+from db.vector_db import FaceVectorDB
 from detector import FaceDetector  # Assuming you have face processing logic
 
 class FaceRecognitionApp:
