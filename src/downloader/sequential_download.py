@@ -9,7 +9,7 @@ from tqdm import tqdm
 import time
 import sys
 sys.path.append("./src")
-from utils import sanitize_dataframe
+from utils.file_utils import sanitize_dataframe
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 

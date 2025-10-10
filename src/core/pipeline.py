@@ -4,28 +4,25 @@ End-to-end pipeline for processing face images
 from pathlib import Path
 from tqdm import tqdm
 import time
+import torch  
+import gc  
 from typing import Optional, Dict
 import logging
 
-from config import Config
-from preprocessing import ImagePreprocessor
-from detector import FaceDetector
-from embedding import FaceNetEmbedding
-from db import FaceVectorDB
+from core.config import Config
+from core.preprocessing import ImagePreprocessor
+from core.detector import FaceDetector
+from core.embedding import FaceNetEmbedding
+from db.vector_db import FaceVectorDB
 
 logger = logging.getLogger(__name__)
 
 
 class FaceProcessingPipeline:
-    """End-to-end pipeline for processing face images and building database"""
+    """End-to-end pipeline with memory management"""
     
     def __init__(self, config: Config):
-        """
-        Initialize pipeline with all components
-        
-        Args:
-            config: Configuration object
-        """
+        """Initialize pipeline with all components"""
         self.config = config
         
         # Initialize components
@@ -36,7 +33,8 @@ class FaceProcessingPipeline:
             self.detector = FaceDetector(device=config.get("device.type"))
         else:
             self.detector = FaceDetector(
-                model_path=config.get("paths.yunet_model_path"),
+                detector_type="yunet",
+                yunet_model_path=config.get("paths.yunet_model_path"),
                 device=config.get("device.type")
             )
         
@@ -52,19 +50,10 @@ class FaceProcessingPipeline:
             collection_name=config.get("vector_database.collection_name")
         )
 
-        # checking
         print(f"current records count : {self.db.get_count()}")
     
     def process_single_image(self, image_path: Path):
-        """
-        Process single image through entire pipeline
-        
-        Args:
-            image_path: Path to image file
-            
-        Returns:
-            Tuple: (success: bool, embedding: np.ndarray, metadata: dict)
-        """
+        """Process single image through entire pipeline"""
         start_time = time.time()
         
         # 1. Preprocess image
@@ -102,9 +91,6 @@ class FaceProcessingPipeline:
     def build_database(self, image_folder: str = "./data/images"):
         """
         Build database from folder of images
-        
-        Args:
-            image_folder: Path to folder containing images
         """
         # Get all image files
         image_folder_path = Path(image_folder)
@@ -113,8 +99,8 @@ class FaceProcessingPipeline:
                      list(image_folder_path.glob("*.jpeg"))
         
         print(f"\nProcessing {len(image_paths)} images...")
-        print(f"Detector: {self.config.get("face_detection.detector_type")}")
-        print(f"Device: {self.config.get("device.type")}\n")
+        print(f"Detector: {self.config.get('face_detection.detector_type')}")
+        print(f"Device: {self.config.get('device.type')}\n")
         
         successful = 0
         failed = 0
@@ -125,8 +111,9 @@ class FaceProcessingPipeline:
         ids_batch = []
         metadatas_batch = []
         
+        batch_size = self.config.get("batch_processing.batch_size")
+        
         for img_path in tqdm(image_paths, desc="Processing images"):
-            # get the person id of the image
             person_id = FaceProcessingPipeline.parse_person_id_from_filename(str(img_path))
             success, embedding, metadata = self.process_single_image(img_path)
             
@@ -138,14 +125,23 @@ class FaceProcessingPipeline:
                 successful += 1
                 
                 # Batch insert when batch is full
-                if len(embeddings_batch) >= self.config.get("batch_processing.batch_size"):
+                if len(embeddings_batch) >= batch_size:
                     self.db.add_embeddings_batch(
                         embeddings_batch, paths_batch, ids_batch, metadatas_batch
                     )
+                    
+                    # cleanup the lists after successful insert
                     embeddings_batch = []
                     paths_batch = []
                     ids_batch = []
                     metadatas_batch = []
+                    
+                    # Clear CUDA cache if using GPU
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    
+                    # Force garbage collection
+                    gc.collect()
             else:
                 if "No face detected" in metadata.get("error", ""):
                     no_face += 1
@@ -156,10 +152,15 @@ class FaceProcessingPipeline:
         if embeddings_batch:
             try:
                 self.db.add_embeddings_batch(
-                embeddings_batch, paths_batch, ids_batch, metadatas_batch
-            )
+                    embeddings_batch, paths_batch, ids_batch, metadatas_batch
+                )
             except Exception as e:
                 logger.error(f"Error during adding embedding to db : {e}")
+            
+            # Final cleanup
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
         
         # Print summary
         print(f"\n{'='*60}")
@@ -170,6 +171,7 @@ class FaceProcessingPipeline:
         print(f"Failed: {failed}")
         print(f"Total in database: {self.db.get_count()}")
         print(f"{'='*60}\n")
+
 
 if __name__ == "__main__":
     config = Config()
