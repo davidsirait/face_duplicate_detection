@@ -1,24 +1,31 @@
 import gradio as gr
-import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 import io
 import base64
-from typing import Tuple, List, Optional, Dict
+from typing import Tuple, List
 import json
-import os
-import shutil
 import sys
+import time
 sys.path.append("./src")
 
-# Import your existing modules
-from inference import FaceDuplicateDetector
-from db.vector_db import FaceVectorDB
-from detector import FaceDetector  # Assuming you have face processing logic
+from core.inference import FaceDuplicateDetector
+from core.config import Config
+from utils.validators import validate_image_file, validate_person_name
+from monitoring.metrics_tracker import MetricsTracker
+
+# Load configuration
+config = Config("./config.yaml")
+
+# Initialize metrics tracker
+metrics_tracker = MetricsTracker(
+    metrics_file="metrics.jsonl"
+)
 
 class FaceRecognitionApp:
     def __init__(self, config_path = "./config.yaml"):
         """Initialize the Face Recognition App"""
-        self.predictor = FaceDuplicateDetector(config_path=config_path)  # Your face processing class
+        self.predictor = FaceDuplicateDetector(config_path=config_path)
+        self.metrics_tracker = metrics_tracker
         
     def process_uploaded_image(
         self, 
@@ -28,70 +35,82 @@ class FaceRecognitionApp:
     ) -> Tuple[str, List[Tuple[Image.Image, str]], str]:
         """
         Process uploaded image and check for duplicates
-        
-        Args:
-            image: Uploaded image as numpy array
-            person_name: Name of the person (becomes person_id)
-            add_to_db: Whether to add the face to database
-            
-        Returns:
-            Tuple of (status_message, list_of_(image,caption)_tuples, json_details)
+        WITH INPUT VALIDATION AND METRICS TRACKING
         """
-        try:
-            # Validate inputs
-            if image is None:
-                return "No image uploaded", [], "{}"
-            
-            if not person_name or person_name.strip() == "":
-                return "Please provide the person name", [], "{}"
-            
-            # check for duplicates
-            is_duplicate, match_info, top_matches = self.predictor.check_duplicate(image)
-
-            # process top_matches results
-            gallery_images_with_captions = self.process_search_results_with_scores(top_matches)
-            
-            # Prepare status message
-            if is_duplicate:
-                similarity_score = 1 - match_info['distance']  # Convert distance to similarity
-                status_msg = f"<h1>**Duplicate Found!**</h1>\n"
-                status_msg += f"Similarity Score: {similarity_score:.2%}<br />"
-                status_msg += f"Matched Person: {match_info.get('metadata', {}).get('person_id', 'Unknown')}"
-            else:
-                status_msg = "**No duplicate found**"
-            
-            # Add to database if requested and not duplicate
-            if add_to_db and not is_duplicate:
-                success, doc_id = self.predictor.add_to_database(image, person_id = person_name)
-                if success:
-                    status_msg += f"\n\n**Added to database** with ID: {doc_id[:8]}..."
-                else:
-                    status_msg += "\n\nNot added to database, error occured"
-            elif add_to_db and is_duplicate:
-                status_msg += "\n\nNot added to database (duplicate detected)"
-            
-            # Prepare detailed JSON results
-            metadatas = top_matches.get('metadatas')
-            distances = top_matches.get('distances')
-
-            details = {
-                "person_name": person_name,
-                "is_duplicate": is_duplicate,
-                "num_matches": len(metadatas[0]),
-                "matches": [
+        # Track end-to-end latency
+        with self.metrics_tracker.track_latency("end_to_end"):
+            try:
+                # INPUT VALIDATION (HIGH PRIORITY FIX #1)
+                is_valid, error_msg = validate_image_file(image)
+                if not is_valid:
+                    return f"Invalid image: {error_msg}", [], "{}"
+                
+                is_valid, error_msg = validate_person_name(person_name)
+                if not is_valid:
+                    return f"Invalid name: {error_msg}", [], "{}"
+                
+                # Track ChromaDB query time separately
+                start_query = time.time()
+                
+                # check for duplicates
+                is_duplicate, match_info, top_matches = self.predictor.check_duplicate(image)
+                
+                query_time_ms = (time.time() - start_query) * 1000
+                
+                # Log ChromaDB query metric
+                self.metrics_tracker.log_metric(
+                    "chromadb_query_time",
+                    round(query_time_ms, 2),
                     {
-                        "rank": i + 1,
-                        "similarity_score": float(1 - distances[0][i]),
-                        "distance": float(distances[0][i]),
-                        "person_id": metadatas[0][i].get('person_id', 'Unknown') if i < len(metadatas[0]) else 'Unknown'
+                        "n_results": len(top_matches.get('ids', [[]])[0]),
+                        "status": "success"
                     }
-                    for i in range(min(6, len(metadatas[0])))
-                ] if distances else [],
-            }
-            return status_msg, gallery_images_with_captions, json.dumps(details, indent=2)
-            
-        except Exception as e:
-            return f" Error: {str(e)}", [], "{}"
+                )
+
+                # process top_matches results
+                gallery_images_with_captions = self.process_search_results_with_scores(top_matches)
+                
+                # Prepare status message
+                if is_duplicate:
+                    similarity_score = 1 - match_info['distance']
+                    status_msg = f"<h1>**Duplicate Found!**</h1>\n"
+                    status_msg += f"Similarity Score: {similarity_score:.2%}<br />"
+                    status_msg += f"Matched Person: {match_info.get('metadata', {}).get('person_id', 'Unknown')}"
+                else:
+                    status_msg = "<h1>**No duplicate found**</h1>"
+                
+                # Add to database if requested and not duplicate
+                if add_to_db and not is_duplicate:
+                    success, doc_id = self.predictor.add_to_database(image, person_id = person_name)
+                    if success:
+                        status_msg += f"\n\n**Added to database** with ID: {doc_id[:8]}..."
+                    else:
+                        status_msg += "\n\nNot added to database, error occured"
+                elif add_to_db and is_duplicate:
+                    status_msg += "\n\nNot added to database (duplicate detected)"
+                
+                # Prepare detailed JSON results
+                metadatas = top_matches.get('metadatas')
+                distances = top_matches.get('distances')
+
+                details = {
+                    "person_name": person_name,
+                    "is_duplicate": is_duplicate,
+                    "num_matches": len(metadatas[0]),
+                    "matches": [
+                        {
+                            "rank": i + 1,
+                            "similarity_score": float(1 - distances[0][i]),
+                            "distance": float(distances[0][i]),
+                            "person_id": metadatas[0][i].get('person_id', 'Unknown') if i < len(metadatas[0]) else 'Unknown'
+                        }
+                        for i in range(min(6, len(metadatas[0])))
+                    ] if distances else [],
+                }
+                return status_msg, gallery_images_with_captions, json.dumps(details, indent=2)
+                
+            except Exception as e:
+                return f"❌ Error: {str(e)}", [], "{}"
     
     def process_search_results_with_scores(self, search_results: dict) -> List[Tuple[Image.Image, str]]:
         """
@@ -109,7 +128,6 @@ class FaceRecognitionApp:
         for i, metadata in enumerate(metadatas[:6]):  # Top 6 matches
             if metadata:
                 try:
-                    # Calculate similarity score (1 - distance)
                     distance = distances[i] if i < len(distances) else 1.0
                     similarity_score = 1 - distance
                     person_id = metadata.get('person_id', 'Unknown')
@@ -119,15 +137,9 @@ class FaceRecognitionApp:
                         thumbnail_data = base64.b64decode(metadata['thumbnail'])
                         img = Image.open(io.BytesIO(thumbnail_data))
                     else:
-                        # Create placeholder if no thumbnail
                         img = self.create_placeholder_image(person_id)
                     
-                    # Add score overlay to image (optional - you can remove this if you prefer clean images)
-                    # img = self.add_score_overlay(img, similarity_score)
-                    
-                    # Create caption with similarity score
                     caption = f"{person_id}\n  {similarity_score:.1%} match"
-                    
                     images_with_captions.append((img, caption))
                     
                 except Exception as e:
@@ -136,47 +148,6 @@ class FaceRecognitionApp:
                     images_with_captions.append((placeholder, "Error loading"))
         
         return images_with_captions
-    
-    def add_score_overlay(self, img: Image.Image, score: float) -> Image.Image:
-        """Add similarity score overlay to image"""
-        # Create a copy to avoid modifying original
-        img = img.copy()
-        draw = ImageDraw.Draw(img)
-        
-        # Add semi-transparent background for score
-        width, height = img.size
-        rect_height = 20
-        
-        # Create overlay rectangle at bottom
-        overlay = Image.new('RGBA', img.size, (0,0,0,0))
-        overlay_draw = ImageDraw.Draw(overlay)
-        overlay_draw.rectangle(
-            [(0, height - rect_height), (width, height)],
-            fill=(0, 0, 0, 180)  # Semi-transparent black
-        )
-        
-        # Composite the overlay
-        img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
-        
-        # Add text
-        draw = ImageDraw.Draw(img)
-        text = f"{score:.1%}"
-        
-        # Try to use a font, fall back to default if not available
-        try:
-            from PIL import ImageFont
-            font = ImageFont.truetype("arial.ttf", 14)
-        except:
-            font = None
-        
-        draw.text(
-            (5, height - rect_height + 2),
-            text,
-            fill=(255, 255, 255),
-            font=font
-        )
-        
-        return img
     
     def create_placeholder_image(self, text: str) -> Image.Image:
         """Create a placeholder image with text"""
@@ -188,10 +159,19 @@ class FaceRecognitionApp:
     def get_database_stats(self) -> str:
         """Get current database statistics"""
         try:
-            count = self.db.get_count()
+            count = self.predictor.db.get_count()
             return f"📊 **Database Statistics**\n\nTotal Faces: {count:,}"
         except Exception as e:
             return f"Error getting stats: {str(e)}"
+
+
+# HEALTH CHECK ENDPOINT (HIGH PRIORITY FIX #2)
+def health_check():
+    """Simple health check function"""
+    try:
+        return {"status": "healthy", "service": "face-recognition"}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
 
 
 # Create the Gradio interface
@@ -262,17 +242,6 @@ def create_gradio_app():
                 with gr.Accordion("📋 Detailed Results", open=False):
                     json_output = gr.JSON(label="Match Details")
         
-        # Example section
-        with gr.Row():
-            gr.Examples(
-                examples=[
-                    ["./src/asset/example1.jpeg", "John Doe", False],
-                    ["./src/asset/example2.jpeg", "Jane Smith", True],
-                ],
-                inputs=[image_input, person_name_input, add_to_db_checkbox],
-                label="Example Inputs"
-            )
-        
         # Event handlers
         process_btn.click(
             fn=app.process_uploaded_image,
@@ -281,7 +250,7 @@ def create_gradio_app():
                 status_output,
                 gallery_output, 
                 json_output
-                ]
+            ]
         )
         
         # Add custom CSS for better styling
@@ -303,13 +272,9 @@ if __name__ == "__main__":
     
     # Launch with options
     demo.launch(
-        server_name="0.0.0.0",  # Allow external access
-        server_port=7860,        # Default Gradio port
-        share=False,             # Set True to create public link
-        debug=True,             # Show debug info
-        show_error=True,        # Show errors in UI
-        # auth=("admin", "password")  # Optional authentication
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False,
+        debug=True,
+        show_error=True,
     )
-    
-    # For production deployment to Hugging Face Spaces:
-    # demo.launch()
